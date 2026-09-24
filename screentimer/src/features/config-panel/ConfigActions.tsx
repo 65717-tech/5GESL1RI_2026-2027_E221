@@ -1,7 +1,6 @@
 import { useRef, useState, type ChangeEvent } from 'react'
 import type { AppConfig, ConfigPatch } from '../../config/schema'
 import { toTimeOfDay } from '../../utils/time'
-import { faqTemplate } from '../faq/faqTemplate'
 import { newWeeklyFramapadUrl } from '../faq/framapad'
 import styles from './ConfigPanel.module.css'
 import { downloadConfig, readConfigFile } from './configFile'
@@ -30,28 +29,12 @@ export function ConfigActions({ config, onChange, onReplace, onReset }: ConfigAc
     }
   }
 
-  const copyTemplate = async () => {
-    const copied = await copyText(faqTemplate(config))
-    setMessage(copied ? 'Modèle de FAQ copié : collez-le dans le pad (Ctrl+V)' : 'Copie impossible')
-  }
-
-  /**
-   * The app cannot write into a pad (Etherpad only accepts edits from its
-   * editor or its secret-key API), so the empty FAQ template is put in the
-   * clipboard before opening the pad, which is what makes Framapad create it.
-   * The copy must happen first: once the new tab has focus, the clipboard is
-   * no longer writable from this page.
-   */
-  const createFramapad = async () => {
+  /** Opening the link is what makes Framapad create the pad. */
+  const createFramapad = () => {
     const pad = newWeeklyFramapadUrl()
     onChange({ pad })
-    const copied = await copyText(faqTemplate(config))
     window.open(pad, '_blank', 'noopener,noreferrer')
-    setMessage(
-      copied
-        ? 'Pad créé pour une semaine : collez-y le modèle de FAQ (Ctrl+V) à la place du texte d’accueil'
-        : 'Pad créé pour une semaine, mais le modèle n’a pas pu être copié : utilisez « Copier le modèle FAQ »',
-    )
+    setMessage('Pad créé pour une semaine')
   }
 
   const copyLink = async () => {
@@ -77,9 +60,6 @@ export function ConfigActions({ config, onChange, onReplace, onReset }: ConfigAc
         </button>
         <button type="button" onClick={createFramapad}>
           Nouveau Framapad (1 semaine)
-        </button>
-        <button type="button" onClick={copyTemplate}>
-          Copier le modèle FAQ
         </button>
         <button type="button" onClick={copyLink}>
           Copier le lien

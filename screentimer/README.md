@@ -47,24 +47,21 @@ Both share one panel, which takes half the screen and rotates every `cycle` seco
 
 ## FAQ (Etherpad)
 
-The app polls `<pad>/export/txt`. The pad holds a JSON document:
+The app polls `<pad>/export/txt`. The pad holds a JSON list, and this is the only accepted format:
 
 ```json
-{
-  "faq": [
-    { "question": "La calculatrice est-elle autorisée ?", "reponse": "Non." },
-    { "question": "Peut-on sortir plus tôt ?", "reponse": "Oui, après 30 minutes.\nSignez la feuille." },
-    { "question": "Question en attente de réponse ?" }
-  ]
-}
+[
+  { "question": "La calculatrice est-elle autorisée ?", "answer": "Non." },
+  { "question": "Peut-on sortir plus tôt ?", "answer": "Oui, après 30 minutes.\nSignez la feuille." },
+  { "question": "Question en attente de réponse ?", "answer": "" }
+]
 ```
 
-- Only the `faq` list is displayed; other keys (such as the template's `aide` and `exemple`) are ignored. A bare array is accepted too.
-- `reponse` (or `réponse`) is optional: a question without an answer is still shown. `\n` starts a new line.
-- Each entry is validated on its own: an invalid entry is skipped, the others are shown.
-- While the JSON is invalid (typically while a teacher is typing), screens keep showing the last valid FAQ with the status « FAQ en cours de modification (JSON invalide) ».
+- Every object has exactly two text fields, `question` (not empty) and `answer` (may be empty: the question is shown as pending). `\n` starts a new line.
+- Anything else (missing or extra field, wrong type, more than 200 entries) makes the whole pad invalid.
+- While the pad is invalid (typically while a teacher is typing), screens keep showing the last valid FAQ with the status « FAQ en cours de modification (JSON invalide) ».
 
-**Nouveau Framapad (1 semaine)** creates an unguessable pad on `hebdo.framapad.org`, sets it as `pad` and opens it. The app cannot write into a pad, so the button also copies an empty FAQ template (an empty `faq` list with help text and an example) to the clipboard; paste it in place of Framapad's welcome text. **Copier le modèle FAQ** copies the template again.
+**Nouveau Framapad (1 semaine)** creates an unguessable pad on `hebdo.framapad.org`, sets it as `pad` and opens it. Framapad's welcome text is not valid FAQ JSON, so screens report it as invalid until it is replaced by the FAQ list.
 
 The pad is untrusted: it is parsed as JSON and validated with valibot, capped (200 KB, 200 entries, 2,000 characters per field), stripped of control and bidi-override characters, and rendered as plain text only.
 

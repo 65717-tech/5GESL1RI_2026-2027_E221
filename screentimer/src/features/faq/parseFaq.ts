@@ -1,10 +1,5 @@
 import * as v from 'valibot'
 
-export interface FaqEntry {
-  question: string
-  answer: string
-}
-
 const MAX_TEXT_LENGTH = 200_000
 const MAX_ENTRIES = 200
 const MAX_FIELD_LENGTH = 2_000
@@ -21,44 +16,28 @@ function clean(text: string): string {
   return trimmed.length > MAX_FIELD_LENGTH ? `${trimmed.slice(0, MAX_FIELD_LENGTH)}…` : trimmed
 }
 
-const field = v.pipe(v.string(), v.transform(clean))
+const text = v.pipe(v.string(), v.transform(clean))
 
-/** `réponse` is accepted too: teachers type it with the accent. */
-const entrySchema = v.pipe(
-  v.object({
-    question: v.pipe(field, v.nonEmpty()),
-    reponse: v.optional(field),
-    réponse: v.optional(field),
-  }),
-  v.transform(({ question, reponse, réponse }) => ({ question, answer: reponse ?? réponse ?? '' })),
+/** The only accepted format: `[{ "question": "…", "answer": "…" }]`. */
+const faqSchema = v.pipe(
+  v.array(v.strictObject({ question: v.pipe(text, v.nonEmpty()), answer: text })),
+  v.maxLength(MAX_ENTRIES),
 )
 
-/** Either `{ "faq": [...] }` (the template, which may carry other keys) or a bare array. */
-const documentSchema = v.union([v.array(v.unknown()), v.object({ faq: v.array(v.unknown()) })])
+export type FaqEntry = v.InferOutput<typeof faqSchema>[number]
 
 /**
- * Parses the pad as JSON:
- *
- *   { "faq": [{ "question": "…", "reponse": "…" }] }
- *
- * Returns null when the text is not a valid document (e.g. a teacher is
- * mid-edit), so the caller can keep the last good FAQ. Invalid entries are
- * skipped one by one. The result is plain text and must be rendered as text.
+ * Returns null when the pad is not a valid FAQ (e.g. a teacher is mid-edit),
+ * so the caller can keep the last valid one. The result is plain text and
+ * must be rendered as text only.
  */
-export function parseFaq(text: string): FaqEntry[] | null {
+export function parseFaq(raw: string): FaqEntry[] | null {
   let data: unknown
   try {
-    data = JSON.parse(text.slice(0, MAX_TEXT_LENGTH).replace(/^\uFEFF/, ''))
+    data = JSON.parse(raw.slice(0, MAX_TEXT_LENGTH))
   } catch {
     return null
   }
-
-  const document = v.safeParse(documentSchema, data)
-  if (!document.success) return null
-  const items = Array.isArray(document.output) ? document.output : document.output.faq
-
-  return items.slice(0, MAX_ENTRIES).flatMap((item) => {
-    const entry = v.safeParse(entrySchema, item)
-    return entry.success ? [entry.output] : []
-  })
+  const result = v.safeParse(faqSchema, data)
+  return result.success ? result.output : null
 }
