@@ -71,25 +71,9 @@ Etherpad limits exports **per IP address**: Framapad answers with `x-ratelimit-l
 
 The app never overlaps requests, gives up on a request after 15 s, doubles the interval after each failure (up to 5 min), spreads screens with ±15 % jitter and does not poll from hidden tabs.
 
-Public Etherpad instances (Framapad included) allow cross-origin reads of the export. If yours doesn't, have the web server proxy the pad under the same origin (for example an nginx `location /pad/` block) and set `pad` to that path.
-
 ## Security
 
 - Every input (URL, `config.json`, imported file, config panel) is validated field by field with the valibot schema in `src/config/schema.ts`. Invalid values are dropped and the rest of the config is kept.
 - `logo` and `pad` only accept `http(s)` links or relative paths. `javascript:`, `data:` and similar URLs are rejected. The logo is loaded as an `<img>` without sending a referrer, and it is hidden if it fails to load.
 - `?config=` only loads JSON files from the page's own origin.
 - Text from the config and the pad is rendered as text, never as HTML. The built page also ships a Content-Security-Policy.
-
-## Docker
-
-```bash
-docker build -t screentimer .
-docker run -p 8080:8080 screentimer
-```
-
-The image builds the app with Bun/Vite and serves `dist/` with an unprivileged nginx (`nginx.conf`: SPA fallback, cache and security headers). To use your own default config without rebuilding:
-
-```bash
-docker run -p 8080:8080 -v ./config.json:/usr/share/nginx/html/config.json:ro screentimer
-```
-
