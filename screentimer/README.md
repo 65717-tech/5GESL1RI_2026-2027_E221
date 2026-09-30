@@ -77,3 +77,7 @@ The app never overlaps requests, gives up on a request after 15 s, doubles the i
 - `logo` and `pad` only accept `http(s)` links or relative paths. `javascript:`, `data:` and similar URLs are rejected. The logo is loaded as an `<img>` without sending a referrer, and it is hidden if it fails to load.
 - `?config=` only loads JSON files from the page's own origin.
 - Text from the config and the pad is rendered as text, never as HTML. The built page also ships a Content-Security-Policy.
+
+## Gitlab page
+
+The .gitlab-ci.yml file has a job to build the bundled page using vite and push it as a Gitlab page
