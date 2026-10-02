@@ -1,93 +1,87 @@
-# 5GESL1RI_2026-2027_E221
 
+# Screentimer
 
+Exam / break screen shown on a classroom projector. It shows the countdown, the course and room, the school logo, the time students may leave, the exam instructions and a live FAQ read from an Etherpad pad.
 
-## Getting started
+The app is a static SPA with no backend: `bun run build` outputs `dist/`, which can be served by any stateless web server or CDN.
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+## Development
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
-
-## Add your files
-
-* [Create](https://docs.gitlab.com/user/project/repository/web_editor/#create-a-file) or [upload](https://docs.gitlab.com/user/project/repository/web_editor/#upload-a-file) files
-* [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
-
-```
-cd existing_repo
-git remote add origin https://gitlab.com/jdosec/5gesl1ri_2026-2027_e221.git
-git branch -M main
-git push -uf origin main
+```bash
+bun install
+bun run dev
+bun run build
 ```
 
-## Integrate with your tools
+## Configuration
 
-* [Set up project integrations](https://gitlab.com/jdosec/5gesl1ri_2026-2027_e221/-/settings/integrations)
+Config values are resolved in this order, each one overriding the previous:
 
-## Collaborate with your team
+1. Built-in defaults (`src/config/schema.ts`)
+2. JSON file: `config.json` next to `index.html`, or another file given with `?config=path/to/file.json`
+3. URL query parameters
 
-* [Invite team members and collaborators](https://docs.gitlab.com/user/project/members/)
-* [Create a new merge request](https://docs.gitlab.com/user/project/merge_requests/creating_merge_requests/)
-* [Automatically close issues from merge requests](https://docs.gitlab.com/user/project/issues/managing_issues/#closing-issues-automatically)
-* [Enable merge request approvals](https://docs.gitlab.com/user/project/merge_requests/approvals/)
-* [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+Changes made in the settings panel (⚙ button, bottom right) are written straight to the URL. Share or bookmark the URL to reuse a setup. **Export JSON** downloads the full config. You can serve that file as `config.json` or pass it with `?config=`.
 
-## Test and Deploy
+| Key            | Type                 | Description                                        |
+| -------------- | -------------------- | -------------------------------------------------- |
+| `mode`         | `exam` \| `break`    | A break only shows the timer                       |
+| `course`       | text                 | Course name, shown above the timer                 |
+| `room`         | text                 | Room, shown above the timer                        |
+| `duration`     | minutes              | Exam or break duration                             |
+| `start`        | `HH:MM[:SS]`         | Start time today; empty means not started          |
+| `minStay`      | minutes              | Delay after the start before students may leave    |
+| `warning`      | minutes              | Remaining time at which the timer turns orange     |
+| `logo`         | http(s) link         | School logo (or a path relative to the page)       |
+| `instructions` | text                 | One instruction per line                           |
+| `pad`          | URL                  | Etherpad pad used as the FAQ source                |
+| `faqRefresh`   | seconds (≥ 60)       | FAQ polling interval (see rate limiting below)     |
+| `cycle`        | seconds (≥ 3)        | Time each instructions / FAQ page stays on screen  |
 
-Use the built-in continuous integration in GitLab.
+Example: `?course=Algorithmique&room=B204&duration=90&start=14:00`
 
-* [Get started with GitLab CI/CD](https://docs.gitlab.com/ci/quick_start/)
-* [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/user/application_security/sast/)
-* [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/topics/autodevops/requirements/)
-* [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/user/clusters/agent/)
-* [Set up protected environments](https://docs.gitlab.com/ci/environments/protected_environments/)
+The timer depends only on the config, so every class that opens the same URL shows the same countdown.
 
-***
+## Instructions and FAQ
 
-# Editing this README
+Both share one panel, which takes half the screen and rotates every `cycle` seconds. It is always shown in exam mode. It shows only the instructions while the FAQ is empty; without instructions, it always shows the FAQ, with a placeholder while it is empty. Once questions appear on the pad, it cycles through the instructions and the FAQ, split into as many pages as it takes for every Q&A to fit on screen.
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+## FAQ (Etherpad)
 
-## Suggestions for a good README
+The app polls `<pad>/export/txt`. The pad holds a JSON list, and this is the only accepted format:
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+```json
+[
+  { "question": "La calculatrice est-elle autorisée ?", "answer": "Non." },
+  { "question": "Peut-on sortir plus tôt ?", "answer": "Oui, après 30 minutes.\nSignez la feuille." },
+  { "question": "Question en attente de réponse ?", "answer": "" }
+]
+```
 
-## Name
-Choose a self-explaining name for your project.
+- Every object has exactly two text fields, `question` (not empty) and `answer` (may be empty: the question is shown as pending). `\n` starts a new line.
+- Anything else (missing or extra field, wrong type, more than 200 entries) makes the whole pad invalid.
+- While the pad is invalid (typically while a teacher is typing), screens keep showing the last valid FAQ with the status « FAQ en cours de modification (JSON invalide) ».
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+**Nouveau Framapad (1 semaine)** creates an unguessable pad on `hebdo.framapad.org`, sets it as `pad` and opens it. Framapad's welcome text is not valid FAQ JSON, so screens report it as invalid until it is replaced by the FAQ list.
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+The pad is untrusted: it is parsed as JSON and validated with valibot, capped (200 KB, 200 entries, 2,000 characters per field), stripped of control and bidi-override characters, and rendered as plain text only.
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+### Rate limiting
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+Etherpad limits exports **per IP address**: Framapad answers with `x-ratelimit-limit: 10`, i.e. 10 exports per 90 s window (Etherpad's default). Past the limit it stops responding instead of returning an error. All the screens of a school usually go out through the same public IP, so they share this budget: **N screens need `faqRefresh` ≥ 9 × N seconds** (60 s covers about 6 screens, 120 s about 13).
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+The app never overlaps requests, gives up on a request after 15 s, doubles the interval after each failure (up to 5 min), spreads screens with ±15 % jitter and does not poll from hidden tabs.
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+## Security
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+- Every input (URL, `config.json`, imported file, config panel) is validated field by field with the valibot schema in `src/config/schema.ts`. Invalid values are dropped and the rest of the config is kept.
+- `logo` and `pad` only accept `http(s)` links or relative paths. `javascript:`, `data:` and similar URLs are rejected. The logo is loaded as an `<img>` without sending a referrer, and it is hidden if it fails to load.
+- `?config=` only loads JSON files from the page's own origin.
+- Text from the config and the pad is rendered as text, never as HTML. The built page also ships a Content-Security-Policy.
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+## GitHub Pages
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+The `.github/workflows/deploy.yml` file contains a workflow that builds 
+the bundled page using Vite and deploys it to GitHub Pages. Each push 
+on `main` triggers a new deployment.
