@@ -39,7 +39,7 @@ jobs:
       # Launch the build Vite (generates /screentimer/dist folder with static files)
       - name: Build
         working-directory: screentimer
-        run: bun run build
+        run: bunx vite build
 
       # Prepare /dist folder as artefact to publish on Pages
       - uses: actions/upload-pages-artifact@v3
